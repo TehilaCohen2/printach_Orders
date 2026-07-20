@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Print Touch · מערכת הזמנות</title>
+<link href="https://fonts.googleapis.com/css2?family=Secular+One&family=IBM+Plex+Sans+Hebrew:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#161616;--ink2:#1F1F1F;--line:#B08432;--line-soft:#E3DBC9;
+  --paper:#FAF8F3;--card:#FFFFFF;--accent:#C9963A;--accent-dark:#A87A28;
+  --ok:#2E9E6B;--warn:#E07B2A;--err:#C0392B;
+  --text:#2A2620;--muted:#6E6455;
+  --radius:14px;--shadow:0 10px 30px rgba(70,52,20,.12);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'IBM Plex Sans Hebrew',system-ui,sans-serif;background:var(--paper);color:var(--text);min-height:100vh}
+.mono{font-family:'IBM Plex Mono',monospace}
+.display{font-family:'Secular One',sans-serif}
+
+/* HERO */
+.hero{
+  background:linear-gradient(rgba(18,18,18,.96),rgba(18,18,18,.96)),
+  repeating-linear-gradient(0deg,transparent,transparent 27px,rgba(201,150,58,.12) 28px),
+  repeating-linear-gradient(90deg,transparent,transparent 27px,rgba(201,150,58,.12) 28px),var(--ink);
+  color:#F2EDE3;padding:40px 24px 36px;
+}
+.hero-inner{max-width:1060px;margin:0 auto;display:flex;align-items:center;gap:28px;flex-wrap:wrap}
+.hero-logo{height:90px;filter:drop-shadow(0 2px 12px rgba(201,150,58,.3))}
+.hero-text .eyebrow{font-size:11px;letter-spacing:.16em;color:var(--accent);margin-bottom:8px}
+.hero-text h1{font-size:clamp(22px,3.5vw,34px);margin-bottom:6px}
+.hero-text .sub{font-size:15px;color:#DDD5C6;line-height:1.6}
+
+/* MAIN LAYOUT */
+.app{max-width:1060px;margin:0 auto;padding:32px 24px 56px;display:grid;grid-template-columns:220px 1fr;gap:24px}
+@media(max-width:700px){.app{grid-template-columns:1fr}}
+
+/* SIDEBAR */
+.sidebar{display:flex;flex-direction:column;gap:8px}
+.nav-btn{background:var(--card);border:1.5px solid var(--line-soft);border-radius:12px;padding:13px 16px;font-family:inherit;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer;text-align:right;transition:.15s;display:flex;align-items:center;gap:10px}
+.nav-btn.active,.nav-btn:hover{background:var(--ink);color:#fff;border-color:var(--ink)}
+.nav-btn .icon{font-size:17px}
+.add-order-btn{margin-top:8px;background:var(--accent);color:var(--ink);border:none;border-radius:12px;padding:13px 16px;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:10px;transition:.15s}
+.add-order-btn:hover{background:var(--accent-dark)}
+
+/* CONTENT */
+.content{min-width:0}
+
+/* VIEWS */
+.view{display:none}
+.view.active{display:block}
+
+/* DASHBOARD */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:24px}
+.kpi{background:var(--card);border:1px solid #E9E3D6;border-radius:12px;padding:16px 18px}
+.kpi .v{font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:var(--ink)}
+.kpi .v.gold{color:var(--accent)}
+.kpi .v.green{color:var(--ok)}
+.kpi .v.warn{color:var(--warn)}
+.kpi .l{font-size:12px;color:var(--muted);margin-top:4px}
+
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.filter-btn{border:1.5px solid var(--line-soft);background:var(--card);border-radius:100px;padding:7px 16px;font-family:inherit;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:.15s}
+.filter-btn.active,.filter-btn:hover{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+.orders-table{width:100%;border-collapse:collapse;background:var(--card);border-radius:12px;overflow:hidden;border:1px solid #E9E3D6;font-size:13px}
+.orders-table th{background:var(--ink);color:#F2EDE3;padding:11px 13px;text-align:right;font-weight:600;font-size:12px}
+.orders-table td{padding:11px 13px;border-bottom:1px solid #F2EEE4;color:var(--text);vertical-align:middle}
+.orders-table tr:last-child td{border-bottom:none}
+.orders-table tr:nth-child(even) td{background:#FBF9F4}
+.orders-table tr.order-row:hover td{background:#F3EEE4;cursor:pointer}
+
+.badge{display:inline-block;padding:3px 10px;border-radius:100px;font-size:11.5px;font-weight:600;white-space:nowrap}
+.b-wait{background:#FEF3C7;color:#92400E}
+.b-design{background:#EDE9FE;color:#5B21B6}
+.b-ready{background:#D1FAE5;color:#065F46}
+.b-done{background:#F3F4F6;color:#374151}
+.b-paid{background:#D1FAE5;color:#065F46}
+.b-unpaid{background:#FEE2E2;color:#991B1B}
+.b-clone{background:#E0F2FE;color:#0369A1}
+
+/* ORDER FORM */
+.form-card{background:var(--card);border:1px solid #E9E3D6;border-radius:var(--radius);padding:24px;margin-bottom:20px}
+.form-card h3{font-size:17px;font-weight:700;color:var(--ink);margin-bottom:18px;display:flex;align-items:center;gap:10px}
+.form-card h3::before{content:"";width:5px;height:20px;background:var(--accent);border-radius:3px;flex-shrink:0}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:500px){.form-grid{grid-template-columns:1fr}}
+.form-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+@media(max-width:600px){.form-grid-3{grid-template-columns:1fr 1fr}}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:12.5px;font-weight:600;color:var(--ink)}
+.field input,.field select,.field textarea{border:1.5px solid var(--line-soft);border-radius:10px;padding:10px 13px;font-family:inherit;font-size:13.5px;color:var(--text);background:#fff;width:100%;transition:.15s}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--accent)}
+.field textarea{resize:vertical;min-height:64px}
+.field.full{grid-column:1/-1}
+
+.item-card{background:#F8F6F0;border:1px solid var(--line-soft);border-radius:12px;padding:18px;margin-bottom:14px;position:relative}
+.item-card .item-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.item-card .item-num{font-size:13px;font-weight:700;color:var(--accent)}
+.remove-item{background:transparent;border:none;color:var(--err);font-size:18px;cursor:pointer;padding:2px 6px;border-radius:6px;transition:.15s}
+.remove-item:hover{background:#FEE2E2}
+
+.img-box{border:2px dashed var(--line-soft);border-radius:10px;padding:16px;text-align:center;cursor:pointer;transition:.15s;background:#fff}
+.img-box:hover{border-color:var(--accent)}
+.img-box .img-lbl{font-size:12.5px;color:var(--muted);margin-top:6px}
+.img-status{font-size:12.5px;color:var(--ok);margin-top:8px;font-weight:600}
+
+.preview-box{background:#fff;border:1.5px solid var(--line-soft);border-radius:10px;padding:14px;text-align:center;min-height:90px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px}
+.preview-box .preview-label{font-size:12px;color:var(--muted)}
+
+.btn{border:none;border-radius:100px;padding:11px 24px;font-family:inherit;font-weight:700;font-size:14px;cursor:pointer;transition:.15s}
+.btn-primary{background:var(--accent);color:var(--ink)}
+.btn-primary:hover{background:var(--accent-dark)}
+.btn-ok{background:var(--ok);color:#fff}
+.btn-ok:hover{background:#24855A}
+.btn-sec{background:transparent;border:1.5px solid var(--line-soft);color:var(--ink);font-weight:600;border-radius:100px;padding:10px 22px;font-family:inherit;font-size:14px;cursor:pointer;transition:.15s}
+.btn-sec:hover{border-color:var(--line);background:#F3EEE4}
+.btn-danger{background:#FEE2E2;color:var(--err);border:1.5px solid #FECACA;border-radius:100px;padding:10px 22px;font-family:inherit;font-size:14px;cursor:pointer;font-weight:600}
+
+.btns-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+
+.total-bar{background:var(--ink);color:#F2EDE3;border-radius:12px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.total-bar .t-label{font-size:14px}
+.total-bar .t-val{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:600;color:var(--accent)}
+
+/* STICKER */
+.sticker-wrap{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start}
+.sticker{background:#fff;border:2px dashed var(--line);border-radius:14px;padding:22px;min-width:270px;max-width:340px;font-size:13px}
+.sticker-num{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:var(--ink);border-bottom:2px solid var(--line-soft);padding-bottom:10px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.sticker-row{display:flex;gap:6px;margin-bottom:5px;line-height:1.5}
+.sticker-row .s-lbl{color:var(--muted);min-width:72px;flex-shrink:0;font-size:12px}
+.sticker-row .s-val{color:var(--text);font-weight:600}
+.sticker-divider{border:none;border-top:1px solid var(--line-soft);margin:10px 0}
+.sticker-alert{background:#FEF3C7;border:1px solid #F59E0B;border-radius:8px;padding:8px 12px;font-size:12.5px;color:#92400E;margin-top:10px;display:flex;gap:6px;align-items:flex-start}
+.sticker-status{display:inline-flex;gap:6px;margin-top:4px;flex-wrap:wrap}
+.status-dot{width:11px;height:11px;border-radius:50%;border:2px solid var(--line-soft);cursor:pointer;transition:.15s;flex-shrink:0}
+.status-dot.active-wait{background:#FCD34D;border-color:#F59E0B}
+.status-dot.active-design{background:#A78BFA;border-color:#7C3AED}
+.status-dot.active-ready{background:#34D399;border-color:#059669}
+.status-dot.active-done{background:#9CA3AF;border-color:#6B7280}
+.sticker-edit-row{display:flex;gap:6px;margin-bottom:7px;align-items:flex-start}
+.sticker-edit-input{border:1.5px solid var(--line-soft);border-radius:8px;padding:5px 10px;font-family:inherit;font-size:12.5px;width:100%;background:#fff}
+
+/* HISTORY */
+.history-search{display:flex;gap:10px;margin-bottom:18px}
+.history-search input{flex:1;border:1.5px solid var(--line-soft);border-radius:10px;padding:10px 14px;font-family:inherit;font-size:14px}
+.hist-card{background:var(--card);border:1px solid #E9E3D6;border-radius:12px;padding:16px 18px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.hist-info .h-num{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted)}
+.hist-info .h-desc{font-size:13.5px;color:var(--text);margin-top:2px;font-weight:600}
+.hist-info .h-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.hist-btns{display:flex;gap:8px}
+
+/* CLONE NOTICE */
+.clone-notice{background:#E0F2FE;border:1px solid #7DD3FC;border-radius:10px;padding:12px 16px;font-size:13px;color:#0369A1;margin-bottom:16px;display:flex;gap:10px;align-items:center}
+
+/* SECTION TITLE */
+.sec-title{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.sec-title .num{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accent-dark);border:1px dashed var(--accent);padding:3px 9px;border-radius:6px}
+.sec-title h2{font-size:20px;color:var(--ink)}
+
+/* GRAPHIC QUEUE */
+.graphic-row{background:var(--card);border:1px solid #E9E3D6;border-radius:12px;padding:15px 18px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.g-info .g-name{font-size:14px;font-weight:700;color:var(--ink)}
+.g-info .g-sub{font-size:12.5px;color:var(--muted);margin-top:3px}
+.g-queue{text-align:center}
+.g-queue .q-num{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:600;color:var(--accent)}
+.g-queue .q-lbl{font-size:11px;color:var(--muted)}
+
+/* FOOTER */
+.brand-footer{max-width:1060px;margin:0 auto;padding:32px 24px 48px;text-align:center}
+.bf-line{width:80px;height:2px;background:var(--accent);margin:0 auto 16px;border-radius:2px}
+.bf-text{font-size:14px;color:var(--text)}
+.bf-text b{color:var(--accent-dark)}
+.bf-site{font-size:11px;letter-spacing:.14em;color:var(--muted);margin-top:6px;direction:ltr}
+
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="hero-inner">
+    <img class="hero-logo" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQI12NgYGBgAAAABQABXvMqOgAAAABJRU5ErkJggg==" alt="Print Touch" onerror="this.style.display='none'">
+    <div class="hero-text">
+      <div class="eyebrow mono">הדמיית מערכת · SYSTEM DEMO</div>
+      <h1 class="display">מערכת ניהול הזמנות</h1>
+      <div class="sub">פרינט Touch — לחצו על כפתורי הממשק ותנסו את המערכת</div>
+    </div>
+  </div>
+</header>
+
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <button class="add-order-btn" onclick="showView('form')">＋ הזמנה חדשה</button>
+    <button class="nav-btn active" data-view="dashboard" onclick="showView('dashboard')"><span class="icon">📋</span> דשבורד הזמנות</button>
+    <button class="nav-btn" data-view="sticker" onclick="showView('sticker')"><span class="icon">🏷️</span> מדבקת הזמנה</button>
+    <button class="nav-btn" data-view="history" onclick="showView('history')"><span class="icon">🕐</span> היסטוריית לקוח</button>
+    <button class="nav-btn" data-view="graphics" onclick="showView('graphics')"><span class="icon">🎨</span> תור גרפיקאיות</button>
+  </aside>
+
+  <!-- CONTENT -->
+  <main class="content">
+
+    <!-- ===== DASHBOARD VIEW ===== -->
+    <div id="view-dashboard" class="view active">
+      <div class="sec-title"><span class="num mono">01</span><h2>דשבורד הזמנות</h2></div>
+      <div class="kpis">
+        <div class="kpi"><div class="v">23</div><div class="l">פתוחות היום</div></div>
+        <div class="kpi"><div class="v warn">7</div><div class="l">בעיצוב</div></div>
+        <div class="kpi"><div class="v green">5</div><div class="l">מוכנות לאיסוף</div></div>
+        <div class="kpi"><div class="v gold">₪2,340</div><div class="l">הכנסות היום</div></div>
+      </div>
+      <div class="filters">
+        <button class="filter-btn active" onclick="filterOrders(this,'all')">הכל</button>
+        <button class="filter-btn" onclick="filterOrders(this,'wait')">ממתין</button>
+        <button class="filter-btn" onclick="filterOrders(this,'design')">בעיצוב</button>
+        <button class="filter-btn" onclick="filterOrders(this,'ready')">מוכן</button>
+        <button class="filter-btn" onclick="filterOrders(this,'done')">נאסף</button>
+      </div>
+      <table class="orders-table">
+        <thead>
+          <tr>
+            <th>#הזמנה</th>
+            <th>לקוח</th>
+            <th>פריטים</th>
+            <th>גרפיקאית</th>
+            <th>סטטוס</th>
+            <th>תשלום</th>
+            <th>פעולות</th>
+          </tr>
+        </thead>
+        <tbody id="orders-body">
+          <tr class="order-row" data-status="ready">
+            <td class="mono">#1042</td>
+            <td>רחל לוי</td>
+            <td>ספל + מגנט ×3</td>
+            <td>מיכל</td>
+            <td><span class="badge b-ready">מוכן לאיסוף</span></td>
+            <td><span class="badge b-paid">שולם ₪180</span></td>
+            <td><button class="btn-sec" style="padding:5px 12px;font-size:12px" onclick="openSticker('1042','רחל לוי','ספל קרמי 330ml','מגנט ×3','180','Bit','מוכן לאיסוף','כיתוב מתחת לתמונה',true)">מדבקה</button></td>
+          </tr>
+          <tr class="order-row" data-status="design">
+            <td class="mono">#1041</td>
+            <td>יוסי כהן</td>
+            <td>קנבס 40×60 + כרית</td>
+            <td>שירה</td>
+            <td><span class="badge b-design">בעיצוב</span></td>
+            <td><span class="badge b-unpaid">לא שולם</span></td>
+            <td><button class="btn-sec" style="padding:5px 12px;font-size:12px" onclick="openSticker('1041','יוסי כהן','קנבס 40×60','כרית רגילה','310','מזומן','בעיצוב','לוודא גוון צבע לפי דוגמה',false)">מדבקה</button></td>
+          </tr>
+          <tr class="order-row" data-status="design">
+            <td class="mono">#1040</td>
+            <td>מרים אברהם</td>
+            <td>3 קנבסים</td>
+            <td>מיכל</td>
+            <td><span class="badge b-design">בעיצוב</span></td>
+            <td><span class="badge b-paid">שולם ₪280</span></td>
+            <td><button class="btn-sec" style="padding:5px 12px;font-size:12px" onclick="openSticker('1040','מרים אברהם','קנבס 30×40','קנבס 40×60 + קנבס 20×30','280','כרטיס','בעיצוב','',true)">מדבקה</button></td>
+          </tr>
+          <tr class="order-row" data-status="wait">
+            <td class="mono">#1039</td>
+            <td>דוד פרץ</td>
+            <td>ספל עם כיתוב</td>
+            <td>—</td>
+            <td><span class="badge b-wait">ממתין</span></td>
+            <td><span class="badge b-unpaid">לא שולם</span></td>
+            <td><button class="btn-sec" style="padding:5px 12px;font-size:12px" onclick="openSticker('1039','דוד פרץ','ספל קרמי 330ml','','0','','ממתין','סבתא הכי טובה — כיתוב מתחת',false)">מדבקה</button></td>
+          </tr>
+          <tr class="order-row" data-status="done">
+            <td class="mono">#1038</td>
+            <td>נועה שמש</td>
+            <td>פאזל 500 חלקים</td>
+            <td>שירה</td>
+            <td><span class="badge b-done">נאסף</span></td>
+            <td><span class="badge b-paid">שולם ₪150</span></td>
+            <td><button class="btn-sec" style="padding:5px 12px;font-size:12px" onclick="openSticker('1038','נועה שמש','פאזל 500 חלקים','','150','bit','נאסף','',true)">מדבקה</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ===== ORDER FORM VIEW ===== -->
+    <div id="view-form" class="view">
+      <div class="sec-title"><span class="num mono">02</span><h2 id="form-title">הזמנה חדשה</h2></div>
+
+      <div id="clone-notice" class="clone-notice hidden">
+        <span>🔁</span>
+        <span id="clone-notice-text">שכפול הזמנה קיימת — ניתן לעדכן פרטים לפני שמירה</span>
+      </div>
+
+      <!-- פרטי לקוח -->
+      <div class="form-card">
+        <h3>פרטי לקוח</h3>
+        <div class="form-grid">
+          <div class="field"><label>שם הלקוח</label><input type="text" id="f-name" placeholder="שם מלא"></div>
+          <div class="field"><label>טלפון</label><input type="tel" id="f-phone" placeholder="050-0000000"></div>
+          <div class="field full"><label>מייל (לעדכונים אוטומטיים)</label><input type="email" id="f-email" placeholder="email@example.com"></div>
+        </div>
+      </div>
+
+      <!-- פריטים -->
+      <div class="form-card">
+        <h3>פריטים</h3>
+        <div id="items-container">
+          <!-- item 1 -->
+          <div class="item-card" id="item-1">
+            <div class="item-header">
+              <span class="item-num">פריט 1</span>
+              <button class="remove-item" onclick="removeItem(1)">✕</button>
+            </div>
+            <div class="form-grid-3">
+              <div class="field">
+                <label>קטגוריה</label>
+                <select id="cat-1" onchange="updatePreview(1)">
+                  <option value="">בחר...</option>
+                  <option>מוצרים</option>
+                  <option>הדפסות חוץ</option>
+                  <option>עבודת חוץ</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>מוצר</label>
+                <select id="prod-1" onchange="updatePreview(1)">
+                  <option value="">בחר מוצר...</option>
+                  <option>ספל קרמי 330ml</option>
+                  <option>ספל קרמי 450ml</option>
+                  <option>קנבס 20×30</option>
+                  <option>קנבס 30×40</option>
+                  <option>קנבס 40×60</option>
+                  <option>קנבס 50×70</option>
+                  <option>מגנט 5×7</option>
+                  <option>מגנט 10×15</option>
+                  <option>כרית 40×40</option>
+                  <option>פאזל 500 חלקים</option>
+                  <option>פאזל 1000 חלקים</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>כמות</label>
+                <input type="number" id="qty-1" value="1" min="1" onchange="calcTotal()">
+              </div>
+            </div>
+            <div class="form-grid" style="margin-top:12px">
+              <div class="field">
+                <label>מחיר ליחידה (₪)</label>
+                <input type="number" id="price-1" placeholder="0" onchange="calcTotal()">
+              </div>
+              <div class="field">
+                <label>גרפיקאית משויכת</label>
+                <select id="graphic-1">
+                  <option value="">בחר...</option>
+                  <option>מיכל</option>
+                  <option>שירה</option>
+                  <option>דנה</option>
+                </select>
+              </div>
+              <div class="field full">
+                <label>הערות לפריט זה</label>
+                <input type="text" id="note-1" placeholder="כיתוב, צבע, מפרט מיוחד..." onchange="updatePreview(1)">
+              </div>
+            </div>
+            <!-- תמונה + הדמיה -->
+            <div class="form-grid" style="margin-top:12px">
+              <div>
+                <div class="field" style="margin-bottom:8px"><label>תמונת לקוח</label></div>
+                <div class="img-box" onclick="simulateUpload(1)">
+                  <div style="font-size:28px">📷</div>
+                  <div class="img-lbl">לחץ להעלאת תמונה</div>
+                  <div class="img-lbl" style="font-size:11px;margin-top:4px">נשמרת ללא שינוי איכות</div>
+                </div>
+                <div id="img-status-1" class="img-status hidden">✓ savta-photo.jpg (4.2MB) — ללא שינוי</div>
+              </div>
+              <div>
+                <div class="field" style="margin-bottom:8px"><label>הדמיה מקדימה</label></div>
+                <div class="preview-box" id="preview-1">
+                  <span style="font-size:24px">🖼️</span>
+                  <div class="preview-label">ההדמיה תוצג לאחר בחירת מוצר ותמונה</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-sec" onclick="addItem()">＋ הוסף פריט נוסף</button>
+      </div>
+
+      <!-- תשלום -->
+      <div class="form-card">
+        <h3>תשלום</h3>
+        <div class="form-grid">
+          <div class="field">
+            <label>סכום לתשלום (₪)</label>
+            <input type="number" id="f-total" placeholder="0">
+          </div>
+          <div class="field">
+            <label>אמצעי תשלום</label>
+            <select id="f-pay-method">
+              <option value="">בחר...</option>
+              <option>מזומן</option>
+              <option>כרטיס אשראי</option>
+              <option>Bit</option>
+              <option>העברה בנקאית</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>סטטוס תשלום</label>
+            <select id="f-pay-status">
+              <option value="">בחר...</option>
+              <option>שולם</option>
+              <option>לא שולם</option>
+              <option>שולם חלקית</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>לשים לב (מופיע על המדבקה)</label>
+            <input type="text" id="f-note" placeholder="הערה חשובה שתופיע על השקית...">
+          </div>
+        </div>
+        <div class="total-bar" id="total-bar" style="margin-top:16px">
+          <span class="t-label">סה"כ הזמנה</span>
+          <span class="t-val" id="total-display">₪0</span>
+        </div>
+      </div>
+
+      <div class="btns-row">
+        <button class="btn btn-ok" onclick="saveOrder()">💾 שמור הזמנה + הפק מדבקה</button>
+        <button class="btn btn-sec" onclick="showView('dashboard')">ביטול</button>
+      </div>
+    </div>
+
+    <!-- ===== STICKER VIEW ===== -->
+    <div id="view-sticker" class="view">
+      <div class="sec-title"><span class="num mono">03</span><h2>מדבקת הזמנה</h2></div>
+      <div class="sticker-wrap">
+        <div class="sticker">
+          <div class="sticker-num">
+            <span id="s-num">#1042 · Print Touch</span>
+          </div>
+          <!-- שדות עריכה במדבקה -->
+          <div class="sticker-edit-row">
+            <span class="s-lbl">לקוח:</span>
+            <input class="sticker-edit-input" id="s-name" value="רחל לוי">
+          </div>
+          <div class="sticker-edit-row">
+            <span class="s-lbl">טלפון:</span>
+            <input class="sticker-edit-input" id="s-phone" value="050-3344556">
+          </div>
+          <hr class="sticker-divider">
+          <div class="sticker-edit-row">
+            <span class="s-lbl">מוצר:</span>
+            <input class="sticker-edit-input" id="s-prod" value="ספל קרמי 330ml">
+          </div>
+          <div class="sticker-edit-row">
+            <span class="s-lbl">פריט 2:</span>
+            <input class="sticker-edit-input" id="s-prod2" value="מגנט 10×15 ×3">
+          </div>
+          <hr class="sticker-divider">
+          <div class="sticker-edit-row">
+            <span class="s-lbl">תשלום:</span>
+            <input class="sticker-edit-input" id="s-pay" value="₪180 — שולם (Bit) ✓">
+          </div>
+          <div id="s-alert-box" class="sticker-alert" style="display:none">
+            <span>⚠</span><input class="sticker-edit-input" id="s-note" value="" placeholder="הערה...">
+          </div>
+          <!-- סטטוס -->
+          <div style="margin-top:12px">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:6px">סטטוס הזמנה:</div>
+            <div class="sticker-status">
+              <span class="status-dot" id="dot-wait" title="ממתין" onclick="setStatus('wait')"></span>
+              <span style="font-size:11px;color:var(--muted)">ממתין</span>
+              &nbsp;&nbsp;
+              <span class="status-dot" id="dot-design" title="בעיצוב" onclick="setStatus('design')"></span>
+              <span style="font-size:11px;color:var(--muted)">בעיצוב</span>
+              &nbsp;&nbsp;
+              <span class="status-dot" id="dot-ready" title="מוכן" onclick="setStatus('ready')"></span>
+              <span style="font-size:11px;color:var(--muted)">מוכן</span>
+              &nbsp;&nbsp;
+              <span class="status-dot" id="dot-done" title="נאסף" onclick="setStatus('done')"></span>
+              <span style="font-size:11px;color:var(--muted)">נאסף</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:14px;max-width:220px">הדמיית המדבקה — ניתן לערוך כל שדה ישירות ולאחר מכן להדפיס</div>
+          <div class="btns-row" style="flex-direction:column">
+            <button class="btn btn-primary" onclick="alert('מדפיסה מדבקה... 🖨️')">🖨️ הדפס מדבקה</button>
+            <button class="btn btn-sec" onclick="alert('שומרת שינויים... ✅')">💾 שמור שינויים</button>
+            <button class="btn btn-sec" onclick="showView('dashboard')">← חזרה לדשבורד</button>
+          </div>
+          <div id="status-msg" style="margin-top:12px;font-size:12.5px;font-weight:600;color:var(--ok)"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== HISTORY VIEW ===== -->
+    <div id="view-history" class="view">
+      <div class="sec-title"><span class="num mono">04</span><h2>היסטוריית לקוח</h2></div>
+      <div class="history-search">
+        <input type="text" id="hist-search" placeholder="חפש לפי שם או טלפון..." oninput="searchHistory()">
+        <button class="btn btn-sec" onclick="searchHistory()">🔍 חפש</button>
+      </div>
+      <div id="hist-results">
+        <div class="hist-card">
+          <div class="hist-info">
+            <div class="h-num">12.07.2026 · #1042</div>
+            <div class="h-desc">רחל לוי — ספל קרמי + מגנט 10×15 ×3</div>
+            <div class="h-sub">₪180 · שולם (Bit) · מוכן לאיסוף</div>
+          </div>
+          <div class="hist-btns">
+            <button class="btn btn-sec" style="padding:7px 14px;font-size:12px" onclick="cloneOrder('1042','רחל לוי','050-3344556')">🔁 שכפל</button>
+            <button class="btn btn-sec" style="padding:7px 14px;font-size:12px" onclick="openSticker('1042','רחל לוי','ספל קרמי 330ml','מגנט ×3','180','Bit','מוכן לאיסוף','כיתוב מתחת לתמונה',true)">🏷️</button>
+          </div>
+        </div>
+        <div class="hist-card">
+          <div class="hist-info">
+            <div class="h-num">02.06.2026 · #0987</div>
+            <div class="h-desc">רחל לוי — קנבס 60×80 + ספל קרמי</div>
+            <div class="h-sub">₪310 · שולם · נאסף</div>
+          </div>
+          <div class="hist-btns">
+            <button class="btn btn-sec" style="padding:7px 14px;font-size:12px" onclick="cloneOrder('0987','רחל לוי','050-3344556')">🔁 שכפל</button>
+            <button class="btn btn-sec" style="padding:7px 14px;font-size:12px" onclick="openSticker('0987','רחל לוי','קנבס 60×80','ספל קרמי','310','מזומן','נאסף','',true)">🏷️</button>
+          </div>
+        </div>
+        <div class="hist-card">
+          <div class="hist-info">
+            <div class="h-num">14.03.2026 · #0841</div>
+            <div class="h-desc">רחל לוי — פאזל 500 חלקים ×2</div>
+            <div class="h-sub">₪240 · שולם · נאסף</div>
+          </div>
+          <div class="hist-btns">
+            <button class="btn btn-sec" style="padding:7px 14px;font-size:12px" onclick="cloneOrder('0841','רחל לוי','050-3344556')">🔁 שכפל</button>
+            <button class="btn btn-sec" style="padding:7px 14px;font-size:12px" onclick="openSticker('0841','רחל לוי','פאזל 500 חלקים ×2','','240','מזומן','נאסף','',true)">🏷️</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== GRAPHICS VIEW ===== -->
+    <div id="view-graphics" class="view">
+      <div class="sec-title"><span class="num mono">05</span><h2>תור גרפיקאיות</h2></div>
+      <div class="graphic-row">
+        <div class="g-info">
+          <div class="g-name">מיכל</div>
+          <div class="g-sub">#1042 ספל לרחל לוי — כיתוב מתחת לתמונה · תמונה מקורית ✓<br>#1040 קנבס 3 גדלים למרים אברהם</div>
+        </div>
+        <div class="g-queue">
+          <div class="q-num">2</div>
+          <div class="q-lbl">בתור</div>
+        </div>
+        <div class="btns-row">
+          <button class="btn btn-sec" style="font-size:12px;padding:7px 14px" onclick="markDone('מיכל')">✓ סמן ראשון מוכן</button>
+        </div>
+      </div>
+      <div class="graphic-row">
+        <div class="g-info">
+          <div class="g-name">שירה</div>
+          <div class="g-sub">#1041 קנבס ליוסי כהן — לוודא גוון צבע</div>
+        </div>
+        <div class="g-queue">
+          <div class="q-num">1</div>
+          <div class="q-lbl">בתור</div>
+        </div>
+        <div class="btns-row">
+          <button class="btn btn-ok" style="font-size:12px;padding:7px 14px" onclick="markDone('שירה')">✓ סמן מוכן</button>
+        </div>
+      </div>
+      <div class="graphic-row">
+        <div class="g-info">
+          <div class="g-name">דנה</div>
+          <div class="g-sub" style="color:var(--ok)">אין משימות פתוחות</div>
+        </div>
+        <div class="g-queue">
+          <div class="q-num" style="color:var(--ok)">0</div>
+          <div class="q-lbl">בתור</div>
+        </div>
+        <div></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<footer class="brand-footer">
+  <div class="bf-line"></div>
+  <div class="bf-text">ההדמיה נוצרה על ידי <b>תהילה</b> · האוטומציה שמאחורי ההצלחה</div>
+  <div class="bf-site mono">tehilauto.com</div>
+</footer>
+
+<script>
+// ===== NAV =====
+let itemCount = 1;
+
+function showView(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  const btn = document.querySelector('[data-view="'+name+'"]');
+  if(btn) btn.classList.add('active');
+  if(name==='form'){
+    const cloneBtn = document.querySelector('[data-view="form"]');
+    if(cloneBtn) cloneBtn.classList.add('active');
+  }
+}
+
+// ===== FILTER =====
+function filterOrders(btn, status){
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.order-row').forEach(row=>{
+    row.style.display = (status==='all' || row.dataset.status===status) ? '' : 'none';
+  });
+}
+
+// ===== ITEMS =====
+function addItem(){
+  itemCount++;
+  const n = itemCount;
+  const container = document.getElementById('items-container');
+  const div = document.createElement('div');
+  div.className = 'item-card';
+  div.id = 'item-'+n;
+  div.innerHTML = `
+    <div class="item-header">
+      <span class="item-num">פריט ${n}</span>
+      <button class="remove-item" onclick="removeItem(${n})">✕</button>
+    </div>
+    <div class="form-grid-3">
+      <div class="field"><label>קטגוריה</label>
+        <select id="cat-${n}" onchange="updatePreview(${n})">
+          <option value="">בחר...</option>
+          <option>מוצרים</option><option>הדפסות חוץ</option><option>עבודת חוץ</option>
+        </select>
+      </div>
+      <div class="field"><label>מוצר</label>
+        <select id="prod-${n}" onchange="updatePreview(${n})">
+          <option value="">בחר מוצר...</option>
+          <option>ספל קרמי 330ml</option><option>ספל קרמי 450ml</option>
+          <option>קנבס 20×30</option><option>קנבס 30×40</option><option>קנבס 40×60</option>
+          <option>קנבס 50×70</option><option>מגנט 5×7</option><option>מגנט 10×15</option>
+          <option>כרית 40×40</option><option>פאזל 500 חלקים</option><option>פאזל 1000 חלקים</option>
+        </select>
+      </div>
+      <div class="field"><label>כמות</label><input type="number" id="qty-${n}" value="1" min="1" onchange="calcTotal()"></div>
+    </div>
+    <div class="form-grid" style="margin-top:12px">
+      <div class="field"><label>מחיר ליחידה (₪)</label><input type="number" id="price-${n}" placeholder="0" onchange="calcTotal()"></div>
+      <div class="field"><label>גרפיקאית משויכת</label>
+        <select id="graphic-${n}">
+          <option value="">בחר...</option><option>מיכל</option><option>שירה</option><option>דנה</option>
+        </select>
+      </div>
+      <div class="field full"><label>הערות לפריט זה</label>
+        <input type="text" id="note-${n}" placeholder="כיתוב, צבע, מפרט מיוחד..." onchange="updatePreview(${n})">
+      </div>
+    </div>
+    <div class="form-grid" style="margin-top:12px">
+      <div>
+        <div class="field" style="margin-bottom:8px"><label>תמונת לקוח</label></div>
+        <div class="img-box" onclick="simulateUpload(${n})">
+          <div style="font-size:28px">📷</div>
+          <div class="img-lbl">לחץ להעלאת תמונה</div>
+          <div class="img-lbl" style="font-size:11px;margin-top:4px">נשמרת ללא שינוי איכות</div>
+        </div>
+        <div id="img-status-${n}" class="img-status hidden">✓ photo.jpg — ללא שינוי</div>
+      </div>
+      <div>
+        <div class="field" style="margin-bottom:8px"><label>הדמיה מקדימה</label></div>
+        <div class="preview-box" id="preview-${n}">
+          <span style="font-size:24px">🖼️</span>
+          <div class="preview-label">ההדמיה תוצג לאחר בחירת מוצר ותמונה</div>
+        </div>
+      </div>
+    </div>`;
+  container.appendChild(div);
+}
+
+function removeItem(n){
+  const el = document.getElementById('item-'+n);
+  if(el) el.remove();
+  calcTotal();
+}
+
+// ===== UPLOAD SIMULATION =====
+const uploadedItems = {};
+function simulateUpload(n){
+  const names = ['savta-photo.jpg','family-portrait.png','vacation.jpg','logo-design.png'];
+  const sizes = ['4.2MB','2.8MB','6.1MB','1.9MB'];
+  const idx = Math.floor(Math.random()*4);
+  uploadedItems[n] = true;
+  const statusEl = document.getElementById('img-status-'+n);
+  statusEl.textContent = '✓ '+names[idx]+' ('+sizes[idx]+') — ללא שינוי';
+  statusEl.classList.remove('hidden');
+  updatePreview(n);
+}
+
+// ===== PREVIEW =====
+const productEmojis = {
+  'ספל קרמי 330ml':'☕','ספל קרמי 450ml':'☕',
+  'קנבס 20×30':'🖼️','קנבס 30×40':'🖼️','קנבס 40×60':'🖼️','קנבס 50×70':'🖼️',
+  'מגנט 5×7':'🧲','מגנט 10×15':'🧲',
+  'כרית 40×40':'🛋️','פאזל 500 חלקים':'🧩','פאזל 1000 חלקים':'🧩',
+};
+
+function updatePreview(n){
+  const prod = document.getElementById('prod-'+n);
+  const note = document.getElementById('note-'+n);
+  const previewEl = document.getElementById('preview-'+n);
+  if(!prod || !previewEl) return;
+  const prodVal = prod.value;
+  const noteVal = note ? note.value : '';
+  const hasImg = uploadedItems[n];
+  if(prodVal && hasImg){
+    const emoji = productEmojis[prodVal] || '📦';
+    previewEl.innerHTML = `
+      <div style="font-size:36px">${emoji}</div>
+      <div style="font-size:12px;font-weight:600;color:var(--ink);margin-top:4px">${prodVal}</div>
+      ${noteVal ? `<div style="font-size:11px;color:var(--accent);margin-top:2px">${noteVal}</div>` : ''}
+      <div style="font-size:11px;color:var(--ok);margin-top:4px">✓ הדמיה מקדימה</div>`;
+  } else if(prodVal){
+    previewEl.innerHTML = `<span style="font-size:24px">📷</span><div class="preview-label">העלה תמונה לצפייה בהדמיה</div>`;
+  }
+}
+
+// ===== TOTAL =====
+function calcTotal(){
+  let total = 0;
+  for(let i=1; i<=itemCount; i++){
+    const price = parseFloat(document.getElementById('price-'+i)?.value)||0;
+    const qty = parseFloat(document.getElementById('qty-'+i)?.value)||1;
+    total += price*qty;
+  }
+  const display = document.getElementById('total-display');
+  if(display) display.textContent = '₪'+total.toLocaleString();
+  const fTotal = document.getElementById('f-total');
+  if(fTotal && !fTotal.value) fTotal.value = total||'';
+}
+
+// ===== SAVE ORDER =====
+function saveOrder(){
+  const name = document.getElementById('f-name').value || 'לקוח';
+  const prod = document.getElementById('prod-1')?.value || 'מוצר';
+  const note = document.getElementById('f-note')?.value || '';
+  const total = document.getElementById('f-total')?.value || '0';
+  const payMethod = document.getElementById('f-pay-method')?.value || '';
+  const payStatus = document.getElementById('f-pay-status')?.value || '';
+  openSticker(Math.floor(1043+Math.random()*10), name, prod, '', total, payMethod, payStatus || 'ממתין', note, payStatus==='שולם');
+}
+
+// ===== STICKER =====
+function openSticker(num, name, prod1, prod2, total, payMethod, status, note, paid){
+  document.getElementById('s-num').textContent = '#'+num+' · Print Touch';
+  document.getElementById('s-name').value = name;
+  document.getElementById('s-phone').value = '050-'+(Math.floor(Math.random()*9000000)+1000000);
+  document.getElementById('s-prod').value = prod1;
+  document.getElementById('s-prod2').value = prod2;
+  const payTxt = total ? '₪'+total+(paid ? ' — שולם'+(payMethod?' ('+payMethod+')':'')+' ✓' : ' — לא שולם') : 'טרם שולם';
+  document.getElementById('s-pay').value = payTxt;
+  const alertBox = document.getElementById('s-alert-box');
+  if(note){
+    alertBox.style.display='flex';
+    document.getElementById('s-note').value = note;
+  } else {
+    alertBox.style.display='none';
+  }
+  setStatus(status==='מוכן לאיסוף'?'ready':status==='בעיצוב'?'design':status==='נאסף'?'done':'wait');
+  showView('sticker');
+  document.getElementById('status-msg').textContent='';
+}
+
+function setStatus(s){
+  const map = {wait:'active-wait',design:'active-design',ready:'active-ready',done:'active-done'};
+  const labels = {wait:'ממתין',design:'בעיצוב',ready:'מוכן לאיסוף',done:'נאסף'};
+  ['wait','design','ready','done'].forEach(k=>{
+    const dot = document.getElementById('dot-'+k);
+    dot.className='status-dot';
+    if(k===s) dot.classList.add(map[k]);
+  });
+  const msg = document.getElementById('status-msg');
+  if(msg) msg.textContent = s==='ready' ? '📧 מייל נשלח ללקוח: ההזמנה שלך מוכנה!' : '';
+}
+
+// ===== HISTORY SEARCH =====
+function searchHistory(){
+  const q = document.getElementById('hist-search').value.toLowerCase();
+  document.querySelectorAll('.hist-card').forEach(c=>{
+    c.style.display = (!q || c.textContent.toLowerCase().includes(q)) ? '' : 'none';
+  });
+}
+
+// ===== CLONE =====
+function cloneOrder(num, name, phone){
+  document.getElementById('form-title').textContent = 'שכפול הזמנה #'+num;
+  document.getElementById('clone-notice').classList.remove('hidden');
+  document.getElementById('clone-notice-text').textContent = 'שכפול מהזמנה #'+num+' — בדוק ועדכן פרטים לפי הצורך';
+  document.getElementById('f-name').value = name;
+  document.getElementById('f-phone').value = phone;
+  document.getElementById('f-email').value = '';
+  showView('form');
+}
+
+// ===== GRAPHICS =====
+function markDone(name){
+  alert('✅ פריט של '+name+' סומן כמוכן!\n📧 מייל אוטומטי נשלח ללקוח.');
+}
+</script>
+</body>
+</html>
